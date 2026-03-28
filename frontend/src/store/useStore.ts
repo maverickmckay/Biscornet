@@ -1,14 +1,17 @@
 import { create } from 'zustand'
 import type { GraphAnalysis, GraphData, CollapsePoint } from '../api/client'
+import { createEventSource } from '../api/client'
 
 interface AppState {
   analysis: GraphAnalysis | null
   graphData: GraphData | null
   selectedNodeId: string | null
   selectedCollapsePoint: CollapsePoint | null
-  stressLevel: number           // 0-1, drives visual pressure overlay
+  stressLevel: number
   loading: boolean
   error: string | null
+  liveConnected: boolean
+  showImport: boolean
 
   setAnalysis: (a: GraphAnalysis) => void
   setGraphData: (g: GraphData) => void
@@ -16,7 +19,12 @@ interface AppState {
   setStressLevel: (v: number) => void
   setLoading: (v: boolean) => void
   setError: (msg: string | null) => void
+  connectLive: () => void
+  disconnectLive: () => void
+  setShowImport: (v: boolean) => void
 }
+
+let _es: EventSource | null = null
 
 export const useStore = create<AppState>((set, get) => ({
   analysis: null,
@@ -26,8 +34,17 @@ export const useStore = create<AppState>((set, get) => ({
   stressLevel: 0,
   loading: false,
   error: null,
+  liveConnected: false,
+  showImport: false,
 
-  setAnalysis: (analysis) => set({ analysis }),
+  setAnalysis: (analysis) => {
+    const { selectedNodeId } = get()
+    const cp = selectedNodeId
+      ? (analysis?.collapse_points.find(p => p.node_id === selectedNodeId) ?? null)
+      : null
+    set({ analysis, selectedCollapsePoint: cp })
+  },
+
   setGraphData: (graphData) => set({ graphData }),
 
   selectNode: (id) => {
@@ -39,4 +56,33 @@ export const useStore = create<AppState>((set, get) => ({
   setStressLevel: (stressLevel) => set({ stressLevel }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
+  setShowImport: (showImport) => set({ showImport }),
+
+  connectLive: () => {
+    if (_es) return
+    _es = createEventSource()
+    _es.addEventListener('analysis_updated', (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data)
+        // Payload has graph_id + summary; trigger a lightweight state note
+        // (full analysis refresh would require a re-fetch)
+        const { analysis } = get()
+        if (analysis && payload.graph_id === analysis.graph_id) {
+          set({ analysis: { ...analysis, summary: payload.summary ?? analysis.summary } })
+        }
+      } catch { /* ignore malformed events */ }
+    })
+    _es.onerror = () => {
+      _es?.close()
+      _es = null
+      set({ liveConnected: false })
+    }
+    set({ liveConnected: true })
+  },
+
+  disconnectLive: () => {
+    _es?.close()
+    _es = null
+    set({ liveConnected: false })
+  },
 }))

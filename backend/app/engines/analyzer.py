@@ -12,13 +12,15 @@ from app.engines.flow import FlowEngine
 from app.engines.scenario import ScenarioEngine
 from app.engines.scoring import ScoringEngine
 from app.engines.classifier import ActionClassifier
+from app.engines.assumption_scanner import AssumptionScanner
 
 
-def analyze(graph: Graph) -> GraphAnalysis:
+def analyze(graph: Graph, raw_text: str | None = None) -> GraphAnalysis:
     dep = DependencyEngine(graph)
     flow = FlowEngine(graph)
     scoring = ScoringEngine(graph)
     classifier = ActionClassifier(graph, scoring)
+    assumption_scan = AssumptionScanner(graph).scan(text=raw_text)
 
     node_scores = scoring.score_all()
     actions = classifier.classify_all()
@@ -98,6 +100,16 @@ def analyze(graph: Graph) -> GraphAnalysis:
         if n.node_type == NodeType.ASSUMPTION
         and node_scores[n.id]["hidden_constraint_score"] > 0.3
     ]
+    # Implicit assumptions from structural + textual scan
+    implicit_assumptions = [
+        {
+            "description": ia.description,
+            "affected_node_ids": ia.affected_node_ids,
+            "scan_type": ia.scan_type,
+            "confidence": ia.confidence,
+        }
+        for ia in assumption_scan.implicit_assumptions
+    ]
 
     # False redundancies summary
     false_reds = [
@@ -126,7 +138,8 @@ def analyze(graph: Graph) -> GraphAnalysis:
         f"{len(collapse_points)} collapse points identified, "
         f"{len(critical)} rated HIGH or CRITICAL. "
         f"{len(spofs)} structural SPOFs detected. "
-        f"{len(hidden_assumptions)} hidden assumption nodes."
+        f"{len(hidden_assumptions)} hidden assumption nodes. "
+        f"{assumption_scan.structural_count} implicit structural assumptions detected."
     )
 
     return GraphAnalysis(
@@ -134,6 +147,7 @@ def analyze(graph: Graph) -> GraphAnalysis:
         graph_name=graph.name,
         collapse_points=collapse_points,
         hidden_assumptions=hidden_assumptions,
+        implicit_assumptions=implicit_assumptions,
         false_redundancies=false_reds,
         top_actions=top_actions,
         summary=summary,

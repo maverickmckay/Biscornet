@@ -147,6 +147,25 @@ export function ActionPanel() {
         </div>
       )}
 
+      {analysis.implicit_assumptions && analysis.implicit_assumptions.length > 0 && (
+        <div style={s.section}>
+          <div style={s.sectionTitle}>
+            Implicit Assumptions
+            <span style={{ ...s.badge, background: '#1e1a3a', color: '#a78bfa', marginLeft: 6 }}>
+              {analysis.implicit_assumptions.length}
+            </span>
+          </div>
+          {analysis.implicit_assumptions.slice(0, 5).map((ia, i) => (
+            <div key={i} style={s.implicitCard}>
+              <span style={{ ...s.implicitBadge, background: ia.scan_type === 'structural' ? '#1e3a5f' : '#1e3a2f' }}>
+                {ia.scan_type}
+              </span>
+              <p style={s.implicitDesc}>{ia.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={s.section}>
         <div style={s.sectionTitle}>Action distribution</div>
         <div style={s.actionDist}>
@@ -198,4 +217,7 @@ const s: Record<string, React.CSSProperties> = {
   actionRow: { display: 'flex', alignItems: 'center', gap: '8px' },
   actionChip: { fontSize: '10px', padding: '2px 8px', borderRadius: '4px', color: '#fff', fontWeight: 600 },
   actionCount: { fontSize: '11px', color: '#6b7280' },
+  implicitCard: { background: '#111113', borderRadius: '4px', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '3px' },
+  implicitBadge: { fontSize: '9px', padding: '1px 5px', borderRadius: '3px', color: '#93c5fd', alignSelf: 'flex-start' },
+  implicitDesc: { fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 },
 }

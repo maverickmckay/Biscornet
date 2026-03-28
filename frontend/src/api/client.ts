@@ -34,11 +34,19 @@ export interface CollapsePoint {
   confidence: number
 }
 
+export interface ImplicitAssumption {
+  description: string
+  affected_node_ids: string[]
+  scan_type: 'structural' | 'textual'
+  confidence: number
+}
+
 export interface GraphAnalysis {
   graph_id: string
   graph_name: string
   collapse_points: CollapsePoint[]
   hidden_assumptions: string[]
+  implicit_assumptions: ImplicitAssumption[]
   false_redundancies: { node_id: string; node_label: string; score: number }[]
   top_actions: { action: string; count: number }[]
   summary: string
@@ -72,6 +80,7 @@ export interface GraphData {
       replaceability: number
       load: number
       visibility: number
+      confidence: number
     }
   }[]
   edges: {
@@ -82,6 +91,30 @@ export interface GraphData {
     attributes: { weight: number; reliability: number; latency: number }
   }[]
 }
+
+export interface DistStats {
+  mean: number
+  median: number
+  p5: number
+  p95: number
+  std: number
+}
+
+export interface MonteCarloResult {
+  n_trials: number
+  simulation_type: string
+  node_id: string
+  collapse_probability: number
+  reroute_score: DistStats
+  cascade_depth: DistStats
+  time_to_failure_hours: DistStats | null
+  histogram_reroute: { bin_start: number; bin_end: number; count: number }[]
+  recommendations: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Graph API
+// ---------------------------------------------------------------------------
 
 export const fetchDemo = (): Promise<GraphAnalysis> =>
   api.get('/demo').then(r => r.data)
@@ -112,9 +145,91 @@ export const uploadGraphCsv = (file: File, name: string): Promise<GraphData> => 
   }).then(r => r.data)
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2: Document extraction
+// ---------------------------------------------------------------------------
+
+export const uploadDocument = (file: File, graphId?: string): Promise<{
+  graph_id: string
+  entity_count: number
+  relation_count: number
+  assumption_sentences: string[]
+  confidence_notes: string[]
+  analysis?: GraphAnalysis
+}> => {
+  const fd = new FormData()
+  fd.append('file', file)
+  if (graphId) fd.append('graph_id', graphId)
+  const endpoint = graphId ? '/documents/extract' : '/documents/extract-and-analyze'
+  return api.post(endpoint, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Workflow log ingestion
+// ---------------------------------------------------------------------------
+
+export const uploadLog = (file: File): Promise<{
+  bottleneck_labels: string[]
+  load_updates: Record<string, number>
+  summary_stats: Record<string, unknown>
+  warnings: string[]
+}> => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/logs/ingest', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
+export const calibrateFromLog = (graphId: string, file: File): Promise<{
+  calibrated_nodes: string[]
+  bottleneck_labels: string[]
+  analysis: GraphAnalysis
+}> => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post(`/logs/ingest-and-calibrate/${graphId}`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Monte Carlo
+// ---------------------------------------------------------------------------
+
+export const runMonteCarlo = (
+  graphId: string,
+  simulationType: string,
+  nodeId: string,
+  nTrials: number = 500,
+  seed?: number,
+  params?: Record<string, unknown>,
+): Promise<MonteCarloResult> =>
+  api.post(`/graphs/${graphId}/monte-carlo`, {
+    simulation_type: simulationType,
+    node_id: nodeId,
+    n_trials: nTrials,
+    seed: seed ?? null,
+    params: params ?? {},
+  }).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Scenario simulation
+// ---------------------------------------------------------------------------
+
 export const simulate = (graphId: string, simulationType: string, nodeId: string, params?: Record<string, unknown>) =>
   api.post(`/graphs/${graphId}/simulate`, {
     simulation_type: simulationType,
     node_id: nodeId,
     params: params ?? {},
   }).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// SSE live events
+// ---------------------------------------------------------------------------
+
+export function createEventSource(): EventSource {
+  return new EventSource('/api/v1/events')
+}

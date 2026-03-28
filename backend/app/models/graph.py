@@ -142,6 +142,10 @@ class GraphAnalysis(BaseModel):
     graph_name: str
     collapse_points: list[CollapsePoint] = Field(default_factory=list)
     hidden_assumptions: list[str] = Field(default_factory=list)
+    implicit_assumptions: list[dict] = Field(
+        default_factory=list,
+        description="Richer implicit assumption objects from AssumptionScanner",
+    )
     false_redundancies: list[dict] = Field(default_factory=list)
     top_actions: list[dict] = Field(default_factory=list)
     summary: str = ""
