@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GraphAnalysis, GraphData, CollapsePoint } from '../api/client'
+import type { GraphAnalysis, GraphData, CollapsePoint, User } from '../api/client'
 import { createEventSource } from '../api/client'
 
 interface AppState {
@@ -12,6 +12,10 @@ interface AppState {
   error: string | null
   liveConnected: boolean
   showImport: boolean
+  // Auth
+  currentUser: User | null
+  token: string | null
+  authChecked: boolean
 
   setAnalysis: (a: GraphAnalysis) => void
   setGraphData: (g: GraphData) => void
@@ -22,9 +26,13 @@ interface AppState {
   connectLive: () => void
   disconnectLive: () => void
   setShowImport: (v: boolean) => void
+  setUser: (user: User | null, token: string | null) => void
+  logout: () => void
 }
 
 let _es: EventSource | null = null
+
+const _storedToken = localStorage.getItem('nnm_token')
 
 export const useStore = create<AppState>((set, get) => ({
   analysis: null,
@@ -36,6 +44,9 @@ export const useStore = create<AppState>((set, get) => ({
   error: null,
   liveConnected: false,
   showImport: false,
+  currentUser: null,
+  token: _storedToken,
+  authChecked: !_storedToken,  // if no token, no need to check
 
   setAnalysis: (analysis) => {
     const { selectedNodeId } = get()
@@ -57,6 +68,20 @@ export const useStore = create<AppState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   setShowImport: (showImport) => set({ showImport }),
+
+  setUser: (user, token) => {
+    if (token) {
+      localStorage.setItem('nnm_token', token)
+    } else {
+      localStorage.removeItem('nnm_token')
+    }
+    set({ currentUser: user, token, authChecked: true })
+  },
+
+  logout: () => {
+    localStorage.removeItem('nnm_token')
+    set({ currentUser: null, token: null, authChecked: true })
+  },
 
   connectLive: () => {
     if (_es) return

@@ -5,6 +5,16 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Attach JWT token from localStorage to every request
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('nnm_token')
+  if (token) {
+    config.headers = config.headers ?? {}
+    config.headers['Authorization'] = `Bearer ${token}`
+  }
+  return config
+})
+
 export type NodeType =
   | 'person' | 'team' | 'function' | 'process_step' | 'system'
   | 'contract_clause' | 'vendor' | 'asset' | 'decision_gate'
@@ -233,3 +243,128 @@ export const simulate = (graphId: string, simulationType: string, nodeId: string
 export function createEventSource(): EventSource {
   return new EventSource('/api/v1/events')
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3: Auth
+// ---------------------------------------------------------------------------
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  is_admin: boolean
+}
+
+export const login = (email: string, password: string): Promise<{ token: string; user: User }> =>
+  api.post('/auth/login', { email, password }).then(r => r.data)
+
+export const register = (email: string, name: string, password: string): Promise<{ token: string; user: User }> =>
+  api.post('/auth/register', { email, name, password }).then(r => r.data)
+
+export const getMe = (): Promise<User> =>
+  api.get('/auth/me').then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 3: Market intelligence
+// ---------------------------------------------------------------------------
+
+export interface PriceSignal {
+  ticker: string
+  price: number | null
+  price_change_30d: number | null
+  trend: string
+}
+
+export interface SECSignal {
+  entity_name: string
+  cik: string
+  risk_level: string
+  material_event_count: number
+  latest_form: string | null
+  latest_date: string | null
+}
+
+export interface NewsSignal {
+  entity_name: string
+  article_count: number
+  sentiment_score: number
+  top_headlines: string[]
+}
+
+export interface MarketIntel {
+  node_id: string
+  node_label: string
+  market_risk_delta: number
+  narrative: string
+  sec_signal: SECSignal | null
+  news_signal: NewsSignal | null
+  price_signal: PriceSignal | null
+}
+
+export const enrichAnalysis = (
+  graphId: string,
+  userMappings?: Record<string, { ticker?: string; cik?: string }>,
+  maxEntities = 20,
+): Promise<{ graph_id: string; market_intelligence: MarketIntel[]; enriched_collapse_points: unknown[] }> =>
+  api.post(`/market/graphs/${graphId}/enrich`, {
+    user_mappings: userMappings ?? null,
+    max_entities: maxEntities,
+  }).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 3: Agent simulation
+// ---------------------------------------------------------------------------
+
+export interface AgentSimResult {
+  n_steps: number
+  simulation_type: string
+  initial_stress_node: string
+  agents: { id: string; name: string; type: string; active: boolean; resources: number; final_node: string; actions_taken: [number, string, string][] }[]
+  steps: { step: number; node_stresses: Record<string, number>; agent_actions: Record<string, string>; failed_nodes: string[]; events: string[] }[]
+  final_failed_nodes: string[]
+  final_stabilised_nodes: string[]
+  reversion_opportunities: string[]
+  cascade_contained: boolean
+  narrative: string
+}
+
+export const runAgentSim = (
+  graphId: string,
+  stressNodeId: string,
+  nSteps = 8,
+  initialStress = 0.9,
+  seed?: number,
+): Promise<AgentSimResult> =>
+  api.post(`/agent-sim/graphs/${graphId}/run`, {
+    stress_node_id: stressNodeId,
+    n_steps: nSteps,
+    initial_stress: initialStress,
+    seed: seed ?? null,
+  }).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 3: Feedback / outcome recording
+// ---------------------------------------------------------------------------
+
+export interface OutcomeRecord {
+  id: string
+  recorded_at: string
+  current_weights: Record<string, number>
+}
+
+export const submitOutcome = (payload: {
+  graph_id: string
+  node_id: string
+  node_label: string
+  action_taken: string
+  outcome: string
+  nnm_score: number
+  notes?: string
+}): Promise<OutcomeRecord> =>
+  api.post('/feedback/outcomes', payload).then(r => r.data)
+
+export const getWeights = (): Promise<Record<string, number>> =>
+  api.get('/feedback/weights').then(r => r.data.weights)
+
+export const getOutcomes = (graphId?: string): Promise<{ outcomes: unknown[] }> =>
+  api.get('/feedback/outcomes', { params: graphId ? { graph_id: graphId } : {} }).then(r => r.data)

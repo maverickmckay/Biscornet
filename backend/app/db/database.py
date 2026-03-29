@@ -29,4 +29,7 @@ def get_db():
 def init_db():
     """Create all tables (used in dev/test; production should use Alembic)."""
     from app.db import models  # noqa: F401 — ensure models are registered
+    from app.auth import models as auth_models  # noqa: F401
+    from app.engines import feedback  # noqa: F401 — registers OutcomeRecord
+    from app.jobs import models as job_models  # noqa: F401 — registers JobRecord
     Base.metadata.create_all(bind=engine)

@@ -1,22 +1,49 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Toolbar } from './components/Toolbar'
 import { Legend } from './components/Legend'
 import { StressSlider } from './components/StressSlider'
 import { CollapseMap } from './components/CollapseMap'
 import { ActionPanel } from './components/ActionPanel'
 import { MonteCarloPanel } from './components/MonteCarloPanel'
+import { MarketPanel } from './components/MarketPanel'
+import { AgentSimPanel } from './components/AgentSimPanel'
+import { FeedbackPanel } from './components/FeedbackPanel'
 import { ImportPanel } from './components/ImportPanel'
+import { AuthScreen } from './components/AuthScreen'
 import { useStore } from './store/useStore'
+import { getMe } from './api/client'
 
-type RightTab = 'action' | 'montecarlo'
+type RightTab = 'action' | 'montecarlo' | 'market' | 'agents' | 'feedback'
+
+const TABS: { id: RightTab; label: string }[] = [
+  { id: 'action', label: 'Collapse' },
+  { id: 'montecarlo', label: 'Monte Carlo' },
+  { id: 'market', label: 'Market' },
+  { id: 'agents', label: 'Agents' },
+  { id: 'feedback', label: 'Feedback' },
+]
 
 export default function App() {
-  const { error, showImport, setShowImport } = useStore()
+  const { error, showImport, setShowImport, token, currentUser, setUser, authChecked } = useStore()
   const [rightTab, setRightTab] = useState<RightTab>('action')
+  const [showAuth, setShowAuth] = useState(false)
+
+  // On mount: validate stored token and fetch user profile
+  useEffect(() => {
+    if (token && !currentUser) {
+      getMe()
+        .then(user => setUser(user, token))
+        .catch(() => setUser(null, null))
+    }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (showAuth) {
+    return <AuthScreen onDone={() => setShowAuth(false)} />
+  }
 
   return (
     <div style={s.root}>
-      <Toolbar />
+      <Toolbar onAuthClick={() => setShowAuth(true)} />
       <Legend />
       <StressSlider />
 
@@ -31,21 +58,22 @@ export default function App() {
         {/* Right: tabbed panel */}
         <div style={s.sidePanel}>
           <div style={s.tabs}>
-            <button
-              style={{ ...s.tab, ...(rightTab === 'action' ? s.tabActive : {}) }}
-              onClick={() => setRightTab('action')}
-            >
-              Collapse Points
-            </button>
-            <button
-              style={{ ...s.tab, ...(rightTab === 'montecarlo' ? s.tabActive : {}) }}
-              onClick={() => setRightTab('montecarlo')}
-            >
-              Monte Carlo
-            </button>
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                style={{ ...s.tab, ...(rightTab === t.id ? s.tabActive : {}) }}
+                onClick={() => setRightTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
           <div style={s.tabContent}>
-            {rightTab === 'action' ? <ActionPanel /> : <MonteCarloPanel />}
+            {rightTab === 'action' && <ActionPanel />}
+            {rightTab === 'montecarlo' && <MonteCarloPanel />}
+            {rightTab === 'market' && <MarketPanel />}
+            {rightTab === 'agents' && <AgentSimPanel />}
+            {rightTab === 'feedback' && <FeedbackPanel />}
           </div>
         </div>
       </div>
@@ -80,7 +108,7 @@ const s: Record<string, React.CSSProperties> = {
     position: 'relative',
   },
   sidePanel: {
-    width: '340px',
+    width: '360px',
     borderLeft: '1px solid #27272a',
     overflow: 'hidden',
     display: 'flex',
@@ -91,15 +119,17 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     borderBottom: '1px solid #27272a',
     flexShrink: 0,
+    overflowX: 'auto',
   },
   tab: {
     flex: 1,
-    padding: '8px',
-    fontSize: '12px',
+    padding: '7px 4px',
+    fontSize: '11px',
     background: 'transparent',
     border: 'none',
     color: '#6b7280',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   tabActive: {
     color: '#e2e2e6',
