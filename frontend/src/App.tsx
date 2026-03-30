@@ -8,12 +8,14 @@ import { MonteCarloPanel } from './components/MonteCarloPanel'
 import { MarketPanel } from './components/MarketPanel'
 import { AgentSimPanel } from './components/AgentSimPanel'
 import { FeedbackPanel } from './components/FeedbackPanel'
+import { OraclePanel } from './components/OraclePanel'
+import { ThresholdPanel } from './components/ThresholdPanel'
 import { ImportPanel } from './components/ImportPanel'
 import { AuthScreen } from './components/AuthScreen'
 import { useStore } from './store/useStore'
 import { getMe } from './api/client'
 
-type RightTab = 'action' | 'montecarlo' | 'market' | 'agents' | 'feedback'
+type RightTab = 'action' | 'montecarlo' | 'market' | 'agents' | 'feedback' | 'oracle' | 'threshold'
 
 const TABS: { id: RightTab; label: string }[] = [
   { id: 'action', label: 'Collapse' },
@@ -21,6 +23,8 @@ const TABS: { id: RightTab; label: string }[] = [
   { id: 'market', label: 'Market' },
   { id: 'agents', label: 'Agents' },
   { id: 'feedback', label: 'Feedback' },
+  { id: 'oracle', label: 'Oracle' },
+  { id: 'threshold', label: 'Threshold' },
 ]
 
 export default function App() {
@@ -74,6 +78,8 @@ export default function App() {
             {rightTab === 'market' && <MarketPanel />}
             {rightTab === 'agents' && <AgentSimPanel />}
             {rightTab === 'feedback' && <FeedbackPanel />}
+            {rightTab === 'oracle' && <OraclePanel />}
+            {rightTab === 'threshold' && <ThresholdPanel />}
           </div>
         </div>
       </div>

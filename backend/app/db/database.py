@@ -32,4 +32,5 @@ def init_db():
     from app.auth import models as auth_models  # noqa: F401
     from app.engines import feedback  # noqa: F401 — registers OutcomeRecord
     from app.jobs import models as job_models  # noqa: F401 — registers JobRecord
+    from app.db import history_models  # noqa: F401 — registers NodeHistoryRecord
     Base.metadata.create_all(bind=engine)

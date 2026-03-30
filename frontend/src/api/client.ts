@@ -368,3 +368,138 @@ export const getWeights = (): Promise<Record<string, number>> =>
 
 export const getOutcomes = (graphId?: string): Promise<{ outcomes: unknown[] }> =>
   api.get('/feedback/outcomes', { params: graphId ? { graph_id: graphId } : {} }).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 4: Telemetry
+// ---------------------------------------------------------------------------
+
+export interface NodeReading {
+  node_id: string
+  load: number
+  reliability: number
+  stress?: number
+  source?: string
+}
+
+export const pushTelemetry = (
+  graphId: string,
+  readings: NodeReading[],
+): Promise<{ graph_id: string; readings_stored: number; node_ids: string[] }> =>
+  api.post(`/telemetry/graphs/${graphId}/readings`, { readings }).then(r => r.data)
+
+export const bootstrapTelemetry = (
+  graphId: string,
+): Promise<{ graph_id: string; bootstrapped_nodes: number; note: string }> =>
+  api.post(`/telemetry/graphs/${graphId}/bootstrap`).then(r => r.data)
+
+export const getTelemetryHistory = (
+  graphId: string,
+  nodeId?: string,
+  limit = 50,
+): Promise<{ graph_id: string; node_count: number; history: Record<string, unknown[]> }> =>
+  api.get(`/telemetry/graphs/${graphId}/history`, {
+    params: { ...(nodeId ? { node_id: nodeId } : {}), limit },
+  }).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 4: Threshold proximity
+// ---------------------------------------------------------------------------
+
+export interface TrajectoryPoint {
+  hours_from_now: number
+  projected_load: number
+  projected_reliability: number
+  confidence: number
+}
+
+export interface ProximityScore {
+  node_label: string
+  current_load: number
+  current_reliability: number
+  current_stress: number
+  load_headroom: number
+  load_rate_per_hour: number
+  hours_to_failure: number | null
+  status: 'stable' | 'drifting' | 'approaching' | 'critical' | 'exceeded'
+  confidence: number
+  alert_message: string | null
+  trajectory: TrajectoryPoint[]
+}
+
+export const getThreshold = (
+  graphId: string,
+): Promise<{ graph_id: string; node_count: number; proximity_scores: Record<string, ProximityScore> }> =>
+  api.get(`/oracle/graphs/${graphId}/threshold`).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 4: Oracle full prediction
+// ---------------------------------------------------------------------------
+
+export interface OraclePrediction {
+  graph_id: string
+  predicted_at: string
+  primary_failure_sequence: {
+    node_id: string
+    node_label: string
+    failure_type: string
+    mechanism: string
+    estimated_hours: number | null
+    trigger_label: string | null
+    confidence: number
+    evidence: string[]
+  }[]
+  analog_archetype: string | null
+  analog_failure_rate: number | null
+  analog_narrative: string | null
+  active_precursors: {
+    node_id: string
+    node_label: string
+    signature_type: string
+    severity: string
+    confidence: number
+    lead_time_hours: number | null
+    evidence: string[]
+  }[]
+  top_adversarial_scenarios: {
+    category: string
+    trigger_labels: string[]
+    cascade_depth: number
+    affected_labels: string[]
+    why_dangerous: string
+    why_missed: string | null
+    damage_score: number
+    defeat_vector: string | null
+  }[]
+  ensemble_confidence: number
+  contested_predictions: string[]
+  robust_predictions: string[]
+  hidden_risk_nodes: string[]
+  uncertainty: {
+    knowable: string[]
+    unknowable: string[]
+    would_resolve: string[]
+    irreducible_floor: number
+  }
+  oracle_confidence: number
+  novelty_score: number
+  completeness_score: number
+}
+
+export const runOracle = (graphId: string): Promise<OraclePrediction> =>
+  api.post(`/oracle/graphs/${graphId}/predict`).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Phase 4: Adversarial scan
+// ---------------------------------------------------------------------------
+
+export const runAdversarial = (
+  graphId: string,
+): Promise<{
+  graph_id: string
+  total_scenarios: number
+  most_dangerous_label: string | null
+  surprise_labels: string[]
+  narrative: string
+  scenarios: unknown[]
+}> =>
+  api.get(`/oracle/graphs/${graphId}/adversarial`).then(r => r.data)
