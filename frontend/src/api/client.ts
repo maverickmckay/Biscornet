@@ -492,6 +492,22 @@ export const runOracle = (graphId: string): Promise<OraclePrediction> =>
 // Phase 4: Adversarial scan
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Backtest
+// ---------------------------------------------------------------------------
+
+export const listBacktestScenarios = (): Promise<{
+  scenarios: { name: string; description: string; tags: string[]; ground_truth: unknown }[]
+}> => api.get('/backtest/scenarios').then(r => r.data)
+
+export const runBacktest = (
+  scenarios?: string[],
+): Promise<unknown> =>
+  api.post('/backtest/run', { scenarios: scenarios ?? null }).then(r => r.data)
+
+export const runBacktestScenario = (name: string): Promise<unknown> =>
+  api.post(`/backtest/run/${name}`).then(r => r.data)
+
 export const runAdversarial = (
   graphId: string,
 ): Promise<{

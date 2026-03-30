@@ -16,6 +16,7 @@ from app.api.agent_routes import router as agent_router
 from app.auth.routes import router as auth_router
 from app.api.telemetry_routes import router as telemetry_router
 from app.api.oracle_routes import router as oracle_router
+from app.api.backtest_routes import router as backtest_router
 
 app = FastAPI(
     title=settings.app_title,
@@ -51,6 +52,7 @@ app.include_router(agent_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(telemetry_router, prefix="/api/v1")
 app.include_router(oracle_router, prefix="/api/v1")
+app.include_router(backtest_router, prefix="/api/v1")
 
 
 @app.get("/health")
