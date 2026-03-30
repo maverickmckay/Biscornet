@@ -11,12 +11,13 @@ import { FeedbackPanel } from './components/FeedbackPanel'
 import { OraclePanel } from './components/OraclePanel'
 import { ThresholdPanel } from './components/ThresholdPanel'
 import { BacktestPanel } from './components/BacktestPanel'
+import { LiminosityPanel } from './components/LiminosityPanel'
 import { ImportPanel } from './components/ImportPanel'
 import { AuthScreen } from './components/AuthScreen'
 import { useStore } from './store/useStore'
 import { getMe } from './api/client'
 
-type RightTab = 'action' | 'montecarlo' | 'market' | 'agents' | 'feedback' | 'oracle' | 'threshold' | 'backtest'
+type RightTab = 'action' | 'montecarlo' | 'market' | 'agents' | 'feedback' | 'oracle' | 'threshold' | 'backtest' | 'liminosity'
 
 const TABS: { id: RightTab; label: string }[] = [
   { id: 'action', label: 'Collapse' },
@@ -27,6 +28,7 @@ const TABS: { id: RightTab; label: string }[] = [
   { id: 'oracle', label: 'Oracle' },
   { id: 'threshold', label: 'Threshold' },
   { id: 'backtest', label: 'Backtest' },
+  { id: 'liminosity', label: 'Liminosity' },
 ]
 
 export default function App() {
@@ -83,6 +85,7 @@ export default function App() {
             {rightTab === 'oracle' && <OraclePanel />}
             {rightTab === 'threshold' && <ThresholdPanel />}
             {rightTab === 'backtest' && <BacktestPanel />}
+            {rightTab === 'liminosity' && <LiminosityPanel />}
           </div>
         </div>
       </div>

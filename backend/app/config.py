@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     app_title: str = "No Next Move"
     app_version: str = "0.2.0"
 
+    anthropic_api_key: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

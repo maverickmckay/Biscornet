@@ -519,3 +519,68 @@ export const runAdversarial = (
   scenarios: unknown[]
 }> =>
   api.get(`/oracle/graphs/${graphId}/adversarial`).then(r => r.data)
+
+// ---------------------------------------------------------------------------
+// Liminosity integration
+// ---------------------------------------------------------------------------
+
+export interface LiminosityConversationEntry {
+  role: 'practitioner' | 'liminosity'
+  content: string
+}
+
+export interface LiminosityEncounterRequest {
+  input: string
+  layer_index?: number
+  history?: LiminosityConversationEntry[]
+  graph_context?: string
+}
+
+export interface LiminositySignalRequest {
+  input: string
+  layer_index?: number
+  graph_context?: string
+}
+
+export interface LiminositySignals {
+  perpendicular_question?: string
+  negative_space?: string
+  hidden_axis?: string
+  operative_signal?: string
+  signature_read?: string
+}
+
+export const liminosityEncounter = (req: LiminosityEncounterRequest): Promise<{
+  layer: string
+  response: string
+  input_tokens: number
+  output_tokens: number
+}> => api.post('/liminosity/encounter', req).then(r => r.data)
+
+export const liminositySignal = (req: LiminositySignalRequest): Promise<{
+  layer: string
+  signals: LiminositySignals
+}> => api.post('/liminosity/signal', req).then(r => r.data)
+
+export const getLiminosityGraphContext = (graphId: string): Promise<{
+  graph_id: string
+  graph_name: string
+  context: string
+  has_analysis: boolean
+}> => api.get(`/liminosity/graphs/${graphId}/context`).then(r => r.data)
+
+export const liminosityIngestSignals = (
+  graphId: string,
+  signals: {
+    perpendicular_question?: string
+    negative_space?: string
+    hidden_axis?: string
+    operative_signal?: string
+    signature_read?: string
+  },
+): Promise<{ graph_id: string; signals_ingested: number; stored: string[] }> =>
+  api.post(`/liminosity/graphs/${graphId}/ingest-signals`, signals).then(r => r.data)
+
+export const getLiminosityLayers = (): Promise<{
+  layers: { name: string; prompt: string }[]
+}> => api.get('/liminosity/layers').then(r => r.data)
