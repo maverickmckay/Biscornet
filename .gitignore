@@ -9,3 +9,5 @@ build/
 node_modules/
 .vite/
 frontend/dist/
+*.db
+*.sqlite
